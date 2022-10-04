@@ -1,0 +1,4 @@
+# Vosk
+# https://alphacephei.com/vosk/models
+# https://alphacephei.com/vosk/models/vosk-model-small-ru-0.22.zip  45M
+# https://alphacephei.com/vosk/models/vosk-model-ru-0.22.zip 1.5G
