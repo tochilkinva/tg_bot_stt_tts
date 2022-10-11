@@ -84,11 +84,11 @@ async def voice_message_handler(message: types.Message):
     """
     Обработчик на получение голосового и аудио сообщения.
     """
-    if isinstance(message.content_type, types.ContentType.VOICE):
+    if message.content_type == types.ContentType.VOICE:
         file_id = message.voice.file_id
-    elif isinstance(message.content_type, types.ContentType.AUDIO):
+    elif message.content_type == types.ContentType.AUDIO:
         file_id = message.audio.file_id
-    elif isinstance(message.content_type, types.ContentType.DOCUMENT):
+    elif message.content_type == types.ContentType.DOCUMENT:
         file_id = message.document.file_id
     else:
         await message.reply("Формат документа не поддерживается")
