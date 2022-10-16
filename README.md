@@ -52,7 +52,7 @@ pip install -r requirements.txt
 - [vosk-model-small-ru-0.22 - 45 Мб](https://alphacephei.com/vosk/models/vosk-model-small-ru-0.22.zip "Модель vosk-model-small-ru-0.22 - 45 Мб") - хуже распознает, но быстрее и весит мало.
 
 *Silero* - оффлайн-создание аудио сообщения из текста.
-В классе TTS проекта указана [модель Silero v3.1 ru - 60 Мб](https://models.silero.ai/models/tts/ru/v3_1_ru.pt "Модель Silero v3.1 ru - 60 Мб"), которая сама скачается при первом запуске проекта. Остальные модели можно скачать [тут](https://github.com/snakers4/silero-models/blob/master/models.yml "Silero - оффлайн-создание аудио из текста") или на сайте [проекта](https://github.com/snakers4/silero-models "Silero - оффлайн-создание аудио из текста"). Поместите файл model.pt в папку models/silero.
+В классе TTS проекта указана [модель Silero v3.1 ru - 60 Мб](https://models.silero.ai/models/tts/ru/v3_1_ru.pt "Модель Silero v3.1 ru - 60 Мб"), которая сама скачается при первом запуске проекта. Остальные модели можно скачать [тут](https://github.com/snakers4/silero-models/blob/master/models.yml "Silero - оффлайн-создание аудио из текста") или на сайте [проекта](https://github.com/snakers4/silero-models "Silero - оффлайн-создание аудио из текста").
 
 *FFmpeg* - набор open-source библиотек для конвертирования аудио- и видео в различных форматах.
 Скачайте набор exe файлов с сайта [проекта](https://ffmpeg.org/download.html "FFmpeg - набор open-source библиотек для конвертирования аудио- и видео в различных форматах.") и поместите файл ffmpeg.exe в папки models/vosk и models/silero.
