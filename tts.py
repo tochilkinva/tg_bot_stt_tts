@@ -22,6 +22,7 @@ class TTS:
         "threads": 4,
         "speaker_voice": "kseniya",
         "model_path": "models/silero/model.pt",  # путь к файлу TTS модели Silero
+        "model_url": "https://models.silero.ai/models/tts/ru/v3_1_ru.pt",  # URL к TTS модели Silero
         "ffmpeg_path": "models/silero"  # путь к ffmpeg
     }
 
@@ -32,6 +33,7 @@ class TTS:
         threads=None,
         speaker_voice=None,
         model_path=None,
+        model_url=None,
         ffmpeg_path=None
     ) -> None:
         """
@@ -42,6 +44,7 @@ class TTS:
         :arg threads: int           # количество тредов, например, 4
         :arg speaker_voice: str     # диктор "aidar", "baya", "kseniya", "xenia", "random"(генерит голос каждый раз, долго)
         :arg model_path: str        # путь до модели silero
+        :arg model_url: str         # URL к TTS модели Silero
         :arg ffmpeg_path: str       # путь к ffmpeg
         """
         self.sample_rate = sample_rate if sample_rate else TTS.default_init["sample_rate"]
@@ -49,6 +52,7 @@ class TTS:
         self.threads = threads if threads else TTS.default_init["threads"]
         self.speaker_voice = speaker_voice if speaker_voice else TTS.default_init["speaker_voice"]
         self.model_path = model_path if model_path else TTS.default_init["model_path"]
+        self.model_url = model_url if model_url else TTS.default_init["model_url"]
         self.ffmpeg_path = ffmpeg_path if ffmpeg_path else TTS.default_init["ffmpeg_path"]
 
         self._check_model()
@@ -63,10 +67,7 @@ class TTS:
         Проверка наличия модели Silero на нужном языке в каталоге приложения
         """
         if not os.path.isfile(self.model_path):
-            torch.hub.download_url_to_file(
-                "https://models.silero.ai/models/tts/ru/v3_1_ru.pt",
-                self.model_path
-            )
+            torch.hub.download_url_to_file(self.model_url, self.model_path)
 
         isffmpeg_here = False
         for file in os.listdir(self.ffmpeg_path):
@@ -381,7 +382,6 @@ class TTS:
 
 
 if __name__ == "__main__":
-
     # Генерирование аудио из текста
     start_time = datetime.now()
     tts = TTS()
