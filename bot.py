@@ -10,12 +10,12 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types.input_file import InputFile
 from dotenv import load_dotenv
 
-from stt_tts import STT, TTS
+from stt import STT
+from tts import TTS
 
 load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-FILE_EXTENTION = [".ogg", ".wav"]
 
 bot = Bot(token=TELEGRAM_TOKEN)  # Объект бота
 dp = Dispatcher(bot)  # Диспетчер для бота
@@ -54,20 +54,14 @@ async def cmd_text(message: types.Message):
     Обработчик на получение текста
     """
     await message.reply("Текст получен")
-    text = message.text
-    print(f"text: {text}")
 
-    out_filename = tts.text_to_ogg(text)
-    print(out_filename)
+    out_filename = tts.text_to_ogg(message.text)
 
     # Отправка голосового сообщения
     path = Path("", out_filename)
     voice = InputFile(path)
-
     await bot.send_voice(message.from_user.id, voice,
-                         caption="ответ от бота")   # ответ от самого бота
-    # await bot.send_voice(chat_id=message.chat.id, voice=voice,
-    #                      caption="ответ в чат")     # ответ в чат
+                         caption="Ответ от бота")
 
     # Удаление временного файла
     os.remove(out_filename)
@@ -96,18 +90,16 @@ async def voice_message_handler(message: types.Message):
 
     file = await bot.get_file(file_id)
     file_path = file.file_path
-
-    destination = Path("", f"{file_id}.tmp")
-    await bot.download_file(file_path, destination=destination)
+    file_on_disk = Path("", f"{file_id}.tmp")
+    await bot.download_file(file_path, destination=file_on_disk)
     await message.reply("Аудио получено")
 
-    text = stt.audio_to_text(destination)
+    text = stt.audio_to_text(file_on_disk)
     if not text:
-        text = "Формат не поддерживается"
-
+        text = "Формат документа не поддерживается"
     await message.answer(text)
 
-    os.remove(destination)  # Удаление временного файла
+    os.remove(file_on_disk)  # Удаление временного файла
 
 
 if __name__ == "__main__":

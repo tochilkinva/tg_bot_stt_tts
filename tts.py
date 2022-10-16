@@ -1,105 +1,14 @@
 # -*- coding: utf8 -*-
 """
-Конвертация текст -> wav/ogg, wav/ogg -> текст
+Конвертация текст -> wav/ogg
 """
-import json  # работа с json-файлами и json-строками
 import os
 import re
-# import torchaudio
 import subprocess
 from datetime import datetime
 
 import torch
 from num2words import num2words
-from vosk import KaldiRecognizer, Model  # оффлайн-распознавание от Vosk
-
-
-class STT:
-    """
-    Класс для распознования аудио через Vosk и преобразования его в текст.
-    Поддерживаются форматы аудио: wav, ogg
-    """
-    default_init = {
-        "model_path": "models/vosk/model",        # путь к STT модели Vosk
-        "sample_rate": 16000,
-        "ffmpeg_path": "models/vosk/ffmpeg.exe"   # путь к ffmpeg
-    }
-
-    def __init__(self,
-                 model_path=None,
-                 sample_rate=None,
-                 ffmpeg_path=None
-                 ) -> None:
-        """
-        Настройка модели Vosk для распознования аудио и
-        преобразования его в текст.
-
-        :arg model_path:  str  путь до модели Vosk
-        :arg sample_rate: int  частота выборки, обычно 16000
-        :arg ffmpeg_path: str  путь к ffmpeg
-        """
-        self.model_path = model_path if model_path else STT.default_init["model_path"]
-        self.sample_rate = sample_rate if sample_rate else STT.default_init["sample_rate"]
-        self.ffmpeg_path = ffmpeg_path if ffmpeg_path else STT.default_init["ffmpeg_path"]
-
-        self._check_model()
-
-        model = Model(self.model_path)
-        self.recognizer = KaldiRecognizer(model, self.sample_rate)
-        self.recognizer.SetWords(True)
-
-    def _check_model(self):
-        """
-        Проверка наличия модели Vosk на нужном языке в каталоге приложения
-        """
-        if not os.path.exists(self.model_path):
-            raise Exception(
-                "Vosk: сохраните папку model в папку vosk\n"
-                "Скачайте модель по ссылке https://alphacephei.com/vosk/models"
-                            )
-
-        if not os.path.isfile(self.ffmpeg_path):
-            raise Exception(
-                "Ffmpeg: сохраните ffmpeg.exe в папку ffmpeg\n"
-                "Скачайте ffmpeg.exe по ссылке https://ffmpeg.org/download.html"
-                            )
-
-    def audio_to_text(self, audio_file_name=None) -> str:
-        """
-        Offline-распознавание аудио в текст через Vosk
-        :param audio_file_name: str путь и имя аудио файла
-        :return: str распознанный текст
-        """
-        if audio_file_name is None:
-            raise Exception("Укажите путь и имя файла")
-        if not os.path.exists(audio_file_name):
-            raise Exception("Укажите правильный путь и имя файла")
-
-        # Конвертация аудио в wav и результат в process.stdout
-        process = subprocess.Popen(
-            [self.ffmpeg_path,
-             "-loglevel", "quiet",
-             "-i", audio_file_name,          # имя входного файла
-             "-ar", str(self.sample_rate),   # частота выборки
-             "-ac", "1",                     # кол-во каналов
-             "-f", "s16le",                  # кодек для перекодирования, у нас wav
-             "-"
-             ],                           # имя выходного файла нет, тк читаем из stdout
-            stdout=subprocess.PIPE
-                                   )
-
-        # Чтение данных кусками и распознование через модель
-        while True:
-            data = process.stdout.read(4000)
-            if len(data) == 0:
-                break
-            if self.recognizer.AcceptWaveform(data):
-                pass
-
-        # Возвращаем распознанный текст в виде str
-        result_json = self.recognizer.FinalResult()  # это json в виде str
-        result_dict = json.loads(result_json)    # это dict
-        return result_dict["text"]               # текст в виде str
 
 
 class TTS:
@@ -112,8 +21,8 @@ class TTS:
         "device_init": "cpu",
         "threads": 4,
         "speaker_voice": "kseniya",
-        "model_path": "models/silero/model.pt",     # путь к TTS модели Silero
-        "ffmpeg_path": "models/silero/ffmpeg.exe"   # путь к ffmpeg
+        "model_path": "models/silero/model.pt",  # путь к файлу TTS модели Silero
+        "ffmpeg_path": "models/silero"  # путь к ffmpeg
     }
 
     def __init__(
@@ -157,13 +66,19 @@ class TTS:
             torch.hub.download_url_to_file(
                 "https://models.silero.ai/models/tts/ru/v3_1_ru.pt",
                 self.model_path
-                                           )
+            )
 
-        if not os.path.isfile(self.ffmpeg_path):
+        isffmpeg_here = False
+        for file in os.listdir(self.ffmpeg_path):
+            if file.startswith('ffmpeg'):
+                isffmpeg_here = True
+
+        if not isffmpeg_here:
             raise Exception(
                 "Ffmpeg: сохраните ffmpeg.exe в папку ffmpeg\n"
                 "Скачайте ffmpeg.exe по ссылке https://ffmpeg.org/download.html"
                             )
+        self.ffmpeg_path = self.ffmpeg_path + '/ffmpeg'
 
     def wav_to_ogg(
         self,
@@ -241,12 +156,12 @@ class TTS:
         :arg sample_rate: str  # качество выходного аудио
         :return: str  # путь до выходного файла
         """
-        # Удаляем файл чтобы все хорошо работало
-        if os.path.exists("test.wav"):
-            os.remove("test.wav")
-
         if text is None:
             raise Exception("Передайте текст")
+
+        # Удаляем существующий файл чтобы все хорошо работало
+        if os.path.exists("test.wav"):
+            os.remove("test.wav")
 
         if speaker_voice is None:
             speaker_voice = self.speaker_voice
@@ -433,23 +348,6 @@ class TTS:
         return self._rename_file(wav_audio_path, out_filename)
 
 # region Может не работать!
-    # def get_ogg(self, out_filename="test_123.ogg", text=None, speaker_voice=None, sample_rate=None) -> str:
-    #     """
-    #     Сохранение результата в файл ogg test_123.ogg
-    #     Не всегда работает!!!
-    #     """
-    #     if os.path.exists(out_filename):
-    #         os.remove(out_filename)
-
-    #     if text is None:
-    #         text="Тест звука! Один, два, три! 4 5 6"
-
-    #     if speaker_voice is None:
-    #         speaker_voice=self.speaker_voice
-
-    #     if sample_rate is None:
-    #         sample_rate=self.sample_rate
-
     #     # Сохранение результата в файл ogg Не всегда работает!
     #     audio_tenzor = self.model.apply_tts(
     #         text=text,
@@ -465,21 +363,6 @@ class TTS:
     #     return out_filename
 
     # def get_bytes(self, text=None, speaker_voice=None, sample_rate=None) -> str:
-    #     """
-    #     Сохранение результата в io.BytesIO()
-    #     Не проверял!!!
-    #     """
-    #     import io
-
-    #     if text is None:
-    #         text="Тест звука! Один, два, три! 4 5 6"
-
-    #     if speaker_voice is None:
-    #         speaker_voice=self.speaker_voice
-
-    #     if sample_rate is None:
-    #         sample_rate=self.sample_rate
-
     #     audio_tenzor = self.model.apply_tts(
     #         text=text,
     #         speaker=speaker_voice,
@@ -502,15 +385,7 @@ if __name__ == "__main__":
     # Генерирование аудио из текста
     start_time = datetime.now()
     tts = TTS()
-    print(tts.text_to_ogg("Привет,Хабр! Тэст 1 2 три четыре", "habr1.ogg"))
-    print(tts.text_to_wav("Тэст! Как меня слышно? Пыш-пыш. Прием!", "habr2.wav"))
-    print(tts.text_to_ogg("Слышу хорошо! Пыш-пыш.", "habr3.ogg"))
-    print("Время выполнения:", datetime.now() - start_time)
-
-    # Распознование аудио
-    start_time = datetime.now()
-    stt = STT()
-    print(stt.audio_to_text("habr1.ogg"))
-    print(stt.audio_to_text("habr2.wav"))
-    print(stt.audio_to_text("habr3.ogg"))
+    print(tts.text_to_ogg("Привет,Хабр! Тэст 1 2 три четыре", "test-1.ogg"))
+    print(tts.text_to_wav("Тэст! Как меня слышно? Пыш-пыш. Прием!", "test-2.wav"))
+    print(tts.text_to_ogg("Слышу хорошо! Пыш-пыш.", "test-3.ogg"))
     print("Время выполнения:", datetime.now() - start_time)
