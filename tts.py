@@ -84,7 +84,7 @@ class TTS:
     def wav_to_ogg(
         self,
         in_filename: str,
-        out_filename: str = "test_1.ogg"
+        out_filename: str = None
                    ) -> str:
         """
         Конвертирует аудио в ogg формат.
@@ -95,6 +95,9 @@ class TTS:
         """
         if not in_filename:
             raise Exception("Укажите путь и имя файла in_filename")
+
+        if out_filename is None:
+            out_filename = "test_1.ogg"
 
         if os.path.exists(out_filename):
             os.remove(out_filename)
@@ -117,7 +120,7 @@ class TTS:
     def ogg_to_wav(
         self,
         in_filename: str,
-        out_filename: str = "test_1.wav"
+        out_filename: str = None
                    ) -> str:
         """
         Конвертирует аудио в wav формат.
@@ -128,6 +131,9 @@ class TTS:
         """
         if not in_filename:
             raise Exception("Укажите путь и имя файла in_filename")
+
+        if out_filename is None:
+            out_filename = "test_1.wav"
 
         if os.path.exists(out_filename):
             os.remove(out_filename)
@@ -211,7 +217,7 @@ class TTS:
     def _merge_audio_n_to_1(
         self,
         in_filenames: list,
-        out_filename: str = "test_n_1.tmp"
+        out_filename: str = None
                             ) -> str:
         """
         Объединит несколько файлов в один файл без перекодирования.
@@ -224,19 +230,41 @@ class TTS:
         if not in_filenames:
             raise Exception("Укажите пути и имя файла in_filenames")
 
+        if out_filename is None:
+            extension = in_filenames[0].split(sep=".")[-1]
+            out_filename = f"test_n_1.{extension}"
+
         if os.path.exists(out_filename):
             os.remove(out_filename)
 
+        filenames = "\n".join([f"file '{filename}'" for filename in in_filenames])
+        with open("audiolist.txt", "wt") as file:
+            file.write(filenames)
+
+        # region
         # Объединит несколько файлов в один файл без перекодирования
-        # Пример: ffmpeg -i "concat:01.ogg|02.ogg|03.ogg" -acodec copy output.ogg
+        # mylist.txt содержит
+        # file '/path/to/file1.wav'
+        # file '/path/to/file2.wav'
+        # file '/path/to/file3.wav'
+
+        # ffmpeg -f concat -safe 0 -i mylist.txt -c copy output.wav
+        # endregion
+
         command = [
             self.ffmpeg_path,
-            "-i", "concat:" + "|".join(in_filenames),
-            "-acodec", "copy",
-            out_filename
+            "-loglevel", "quiet",
+            "-f", "concat",
+            "-safe", "0",
+            "-i", "audiolist.txt",
+            "-c", "copy",
+            out_filename,
         ]
-        proc = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        proc = subprocess.Popen(command)
         proc.wait()
+
+        if os.path.exists("audiolist.txt"):
+            os.remove("audiolist.txt")
 
         return out_filename
 
@@ -270,8 +298,8 @@ class TTS:
         # Делаем числа буквами
         text = self._nums_to_text(text)
 
-        # Генерируем ogg если текст < 1000 символов
-        if len(text) < 1000:
+        # Генерируем ogg если текст < 800 символов
+        if len(text) < 800:
             # Возвращаем путь до ogg
             ogg_audio_path = self._get_ogg(text)
 
@@ -281,7 +309,7 @@ class TTS:
             return self._rename_file(ogg_audio_path, out_filename)
 
         # Разбиваем текст, конвертируем и склеиваем аудио в один файл
-        texts = [text[x:x+990] for x in range(0, len(text), 990)]
+        texts = [text[x:x+800] for x in range(0, len(text), 800)]
         files = []
         for index in range(len(texts)):
             # Конвертируем текст в ogg, возвращаем путь до ogg
@@ -317,7 +345,7 @@ class TTS:
         text = self._nums_to_text(text)
 
         # Передаем текст целиком
-        if len(text) < 1000:
+        if len(text) < 800:
             # Конвертируем текст в wav, возвращаем путь до wav
             wav_audio_path = self._get_wav(text)
 
@@ -327,7 +355,7 @@ class TTS:
             return self._rename_file(wav_audio_path, out_filename)
 
         # Разбиваем текст, конвертируем и склеиваем аудио в один файл
-        texts = [text[x:x+990] for x in range(0, len(text), 990)]
+        texts = [text[x:x+800] for x in range(0, len(text), 800)]
         files = []
         for index in range(len(texts)):
             # Конвертируем текст в wav, возвращаем путь до wav
@@ -379,6 +407,29 @@ class TTS:
     #     buffer_.seek(0)
     #     return buffer_
 # endregion
+
+    def wav_to_ogg_bytes(self, in_bytes: bytes) -> bytes:
+        """
+        Конвертирует аудио в ogg формат без сохранения данных на диск.
+
+        :arg in_bytes: bytes  # входной файл в байтах
+        :return:       bytes  # выходной файл в байтах
+        """
+        command = [
+            self.ffmpeg_path,
+            "-i", 'pipe:0',          # stdin
+            "-f", "ogg",             # format
+            "-acodec", "libvorbis",  # codec
+            "pipe:1"                 # stdout
+        ]
+        proc = subprocess.Popen(
+            command,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        out_bytes, err = proc.communicate(input=in_bytes)
+        return out_bytes
 
 
 if __name__ == "__main__":
